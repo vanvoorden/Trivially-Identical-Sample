@@ -18,17 +18,17 @@ Our experiment will build from the [`sample-food-truck`](https://github.com/appl
 The `sample-food-truck` repo supports building for multiple platforms including iOS and watchOS. We will focus on macOS for our analysis. Here is what the app looks like built for macOS:
 
 <picture>
- <source media="(prefers-color-scheme: dark)" srcset="2024-04-26-3.png">
- <source media="(prefers-color-scheme: light)" srcset="2024-04-26-1.png">
- <img src="2024-04-26-1.png">
+ <source media="(prefers-color-scheme: dark)" srcset="2026-07-14-2.png">
+ <source media="(prefers-color-scheme: light)" srcset="2026-07-14-1.png">
+ <img src="2026-07-14-1.png">
 </picture>
 
 We will spend most of our time investigating the `OrdersTable`. Here is what that component looks like:
 
 <picture>
- <source media="(prefers-color-scheme: dark)" srcset="2024-04-26-4.png">
- <source media="(prefers-color-scheme: light)" srcset="2024-04-26-2.png">
- <img src="2024-04-26-2.png">
+ <source media="(prefers-color-scheme: dark)" srcset="2026-07-14-4.png">
+ <source media="(prefers-color-scheme: light)" srcset="2026-07-14-3.png">
+ <img src="2026-07-14-3.png">
 </picture>
 
 The `OrdersTable` is a SwiftUI component that reads (and displays) data from a `FoodTruckModel` object instance. The `FoodTruckModel` object instance manages an `Array` of `Order` value types. Our sample app from Apple launches with 24 `Order` instances generated from a `OrderGenerator`. We will increase this by three orders of magnitude and measure performance as we test `isTriviallyIdentical(to:)` against value equality.
