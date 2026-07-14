@@ -1,4 +1,4 @@
-# Trivially Identical Sample
+# Trivially-Identical-Sample: Measuring the Performance Improvements from SE-0494
 
 The [SE-0494](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0494-add-is-identical-methods.md) Swift Evolution Proposal added a new set of “performance hook” APIs to the Swift Standard Library. The `isTriviallyIdentical(to:)` methods are alternatives to testing collections for value equality.
 
