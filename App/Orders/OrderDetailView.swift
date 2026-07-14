@@ -62,12 +62,12 @@ struct OrderDetailView: View {
                 Button {
                     order.markAsNextStep { status in
                         if status == .preparing {
-                            #if canImport(ActivityKit)
+                            #if os(iOS)
                             print("Start live activity.")
                             prepareOrder()
                             #endif
                         } else if status == .completed {
-                            #if canImport(ActivityKit)
+                            #if os(iOS)
                             print("Stop live activity.")
                             endActivity()
                             #endif
@@ -83,7 +83,7 @@ struct OrderDetailView: View {
         }
     }
     
-    #if canImport(ActivityKit)
+    #if os(iOS)
     func prepareOrder() {
         let timerSeconds = 60
         let activityAttributes = TruckActivityAttributes(

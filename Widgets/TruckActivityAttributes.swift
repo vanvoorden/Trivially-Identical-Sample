@@ -5,10 +5,13 @@ Abstract:
 Defines the live activity attributes.
 */
 
-#if canImport(ActivityKit)
 import Foundation
+#if canImport(ActivityKit)
 import ActivityKit
+#endif
 import FoodTruckKit
+
+#if os(iOS)
 
 struct TruckActivityAttributes: ActivityAttributes {
     public typealias MyActivityStatus = ContentState

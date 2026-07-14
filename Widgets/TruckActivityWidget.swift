@@ -5,7 +5,7 @@ Abstract:
 Defines the live activity and dynamic island.
 */
 
-#if canImport(ActivityKit)
+#if os(iOS)
 import SwiftUI
 import WidgetKit
 import FoodTruckKit

@@ -36,17 +36,6 @@ public class FoodTruckModel: ObservableObject {
         monthlyOrderSummaries = Dictionary(uniqueKeysWithValues: City.all.map { city in
             (key: city.id, orderGenerator.historicalMonthlyOrders(since: .now, cityID: city.id))
         })
-        Task(priority: .background) {
-            var generator = OrderGenerator.SeededRandomGenerator(seed: 5)
-            for _ in 0..<20 {
-                try? await Task.sleep(nanoseconds: .secondsToNanoseconds(.random(in: 3 ... 8, using: &generator)))
-                Task { @MainActor in
-                    withAnimation(.spring(response: 0.4, dampingFraction: 1)) {
-                        self.orders.append(orderGenerator.generateOrder(number: orders.count + 1, date: .now, generator: &generator))
-                    }
-                }
-            }
-        }
     }
     
     public func dailyOrderSummaries(cityID: City.ID) -> [OrderSummary] {
