@@ -310,7 +310,7 @@ Let’s see what happens when we try our experiment again. Here are our results 
 
 Our control group built from value equality spent 692.49 ms on `MainActor` performing work in `SortedOrders.update`. Our test group built from *reference* equality spent 601.41 ms from the same user events. This is about a 13 percent improvement after changing one line of code.
 
-These measurements were from a MacBook Pro M2 Max. Your results could be faster or slower depending on your machine. What matters more for now is the *relative* difference between your control group and your test group. Not the *absolute* values.
+These measurements can be found in the `Instruments` directory of the `Trivially-Identical-Sample` fork. These were recorded from a MacBook Pro M2 Max. Your results could be faster or slower depending on your machine. What matters more for now is the *relative* difference between your control group and your test group. Not the *absolute* values.
 
 ## Analysis
 
@@ -324,7 +324,11 @@ You can experiment with this yourself to see how this impacts performance. Try s
 
 Is this “cheating”? Are we “cooking the books”. Well… yes and no. It’s a totally legit critique at this point to argue that our experiment is not something general purpose that scales to a wide variety of applications and products. But… that’s also sort of the whole point. The `isTriviallyIdentical(to:)` methods are *niche* operations. These are “hipster” APIs: something “underground” that might not really ever cross over to a mainstream audience.
 
-At the end of the day you are the one who knows the most about the performance of your applications and products. Measure the time spent performing checks for value equality. Make the change to `isTriviallyIdentical(to:)` and measure the time spent performing checks for reference equality. Measure these changes using the real world user experiences in your products. You might end up with a situation where your value equality checks actually *save* you performance down the road. That’s ok. You should continue using value equality checks when it makes sense to do so.
+At the end of the day you are the one who knows the most about the performance of your applications and products. Measure the time spent performing checks for value equality. Make the change to `isTriviallyIdentical(to:)` and measure the time spent performing checks for reference equality. Measure these changes using the real world user experiences in your products.
+
+Be sure to also consider any “downstream” side effects from your comparisons: what business logic happens after two values are not equal or not identical? You might end up with a situation where your value equality checks actually *save* you performance down the road. That’s ok. You should continue using value equality checks when it makes sense to do so.
+
+Our `FoodTruckModel` class currently saves its `orders` as a *stored* instance property. Suppose for some reason `FoodTruckModel` was refactored and now `orders` is a *computed* property that returns a new `Array` of data models *every time* it is called. Every time we request `orders` we get a *new* `Array` with a *new* identity even when the `Order` data model elements *themselves* are exactly the same. When `SortedOrders` then calls `isTriviallyIdentical(to:)` we will return `false`. But these `Array` values *are* equal by value. What happens to performance? We return from `isTriviallyIdentical(to:)` in constant time… but we then sort our `Array` in `O(n log n)` time. Suppose we replace `isTriviallyIdentical(to:)` with a traditional `==` check for value equality: this is an `O(n)` operation that returns `true` and we *do not* perform an `O(n log n)` sort operation. We would expect the aggregate sum of time spent in `SortedOrders.update` to actually get *slower* from `isTriviallyIdentical(to:)` because of all the unnecessary sorting.
 
 The purpose of the `isTriviallyIdentical(to:)` APIs is to start offering a choice to developers: measure these in your own products and use your best judgement for when it does and does not make sense to make the switch.
 
