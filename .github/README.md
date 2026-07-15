@@ -330,7 +330,6 @@ The purpose of the `isTriviallyIdentical(to:)` APIs is to start offering a choic
 
 ## Copyright
 
-```
 Copyright 2026 North Bronson Software
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -344,7 +343,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-```
 
 [^1]: <https://github.com/swiftlang/swift/blob/swift-6.3.3-RELEASE/stdlib/public/core/Array.swift#L1988-L1991>
 [^2]: <https://github.com/swiftlang/swift/blob/swift-6.3.3-RELEASE/stdlib/public/core/Array.swift#L1993-L1996>
