@@ -31,7 +31,7 @@ We will spend most of our time investigating the `OrdersTable`. Here is what tha
  <img src="2026-07-14-3.png">
 </picture>
 
-The `OrdersTable` is a SwiftUI component that reads (and displays) data from a `FoodTruckModel` object instance. The `FoodTruckModel` object instance manages an `Array` of `Order` value types. Our sample app from Apple launches with 24 `Order` instances generated from a `OrderGenerator`. We will increase this by three orders of magnitude and measure performance as we test `isTriviallyIdentical(to:)` against value equality.
+The `OrdersTable` is a SwiftUI component that reads and displays data from a `FoodTruckModel` object instance. The `FoodTruckModel` object instance manages an `Array` of `Order` value types. Our sample app from Apple launches with 24 `Order` instances generated from a `OrderGenerator`. We will increase this by three orders of magnitude and measure performance as we test `isTriviallyIdentical(to:)` against value equality.
 
 Feel free to look around this code and investigate how things are currently architected before moving forward. We will be hacking on the sample project from Apple to collect our measurements. You can choose to follow along by hacking on the Apple repo, or you can clone the `Trivially-Identical-Sample` fork to see the complete project with our changes already implemented.
 
@@ -75,9 +75,11 @@ The `FoodTruckModel` uses the `OrderGenerator` type to build its `Array` of `Ord
              sales: sales,
 ```
 
+Try building and running the app now to see 24,000 orders displayed in `OrdersTable`.
+
 ## Memoization
 
-Our `OrdersTable` currently computes the filtered and sorted `orders` *every* time the view `body` is computed. This is *expensive*: we are currently doing no work to memoize or cache these values.
+Our `OrdersTable` currently computes the filtered and sorted `orders` *every* time the view `body` is computed:
 
 ```swift
 var orders: [Order] {
@@ -100,7 +102,7 @@ var body: some View {
 }
 ```
 
-In [Swift-CowBox-Sample](https://github.com/Swift-CowBox/Swift-CowBox-Sample) we saw a different approach. We will *memoize* our computed `orders` property. If the *input* to this derived state has not changed we can return the previous result in constant time.
+This is *expensive*: we are currently doing no work to memoize or cache these values. In [Swift-CowBox-Sample](https://github.com/Swift-CowBox/Swift-CowBox-Sample) we saw a different approach. We will memoize our computed `orders` property. If the *input* to this derived state has not changed we can return the previous *output* in constant time.
 
 Here is what a memoized property wrapper looks like for `OrdersTable`:
 
@@ -203,16 +205,16 @@ extension SortedOrders {
 It’s almost 100 lines of code, but it’s not very complicated work. Let’s quickly look through to see what is happening:
 
 * We construct `SortedOrders` with an array of `Order` models and a `String` we use to search and filter these models.
-* Our `SortedOrders` dynamic property wrapper returns an `Array` of filtered and sorted `Order` models as a `wrappedValue`.
+* Our `SortedOrders` dynamic property wrapper returns an `Array` of filtered and sorted `Order` models from `SortedOrders.Storage` as a `wrappedValue`.
 * Our `SortedOrders` wrapper exposes a `State` variable that controls the sort order of our `wrappedValue`. Our default value with be `forward` sorting on `creationDate`.
-* Our `SortedOrders` wrapper implements `update` and forwards its current values through to a `SortedOrders.Storage` reference. We also add an `OSSignposter` here for our performance measurements.
+* Our `SortedOrders` wrapper implements `update` and forwards its current values through to `SortedOrders.Storage`. We also add an `OSSignposter` here for our performance measurements.
 
 Let’s look closer at `SortedOrders.Storage`:
 
 * Our `update(orders:searchText:sortOrder:)` method passes these values to a `shouldUpdateOutput(orders:searchText:sortOrder:)` method. This returns `true` to indicate we should compute a new `output` value.
 * Our `wrappedValue` returns our computed `output`. Because `DynamicProperty` will call `update` *before* our view `body` is computed our `output` should have already been computed. We will crash with `fatalError` for now to indicate this is being used outside of a traditional SwiftUI lifecycle.
 
-Let’s take a closer look at the `shouldUpdateOutput(orders:searchText:sortOrder:)` method. We start by testing if our current `output` is `nil`. If we have never computed an `output` then we return `true` to indicate we must compute one. If we do have a computed `output`, we test the `orders` value called from `update` against the *previous* `orders` value at the time we computed our last `output` value. If these values are *not* equal by value equality we return true to indicate we must compute a new `output`. Remember: this is a `O(n)` operation that potentially visits *every* data model element in our `Array`.
+Let’s take a closer look at the `shouldUpdateOutput(orders:searchText:sortOrder:)` method. We start by testing if our current `output` is `nil`. If we have never computed an `output` then we return `true` to indicate we must compute a new one. If we do have a computed `output`, we test the `orders` value called from `update` against the *previous* `orders` value at the time we computed our last `output` value. If these values are *not* equal by value equality we return true to indicate we must compute a new `output`. Remember: this is a `O(n)` operation that potentially visits *every* data model element in our `Array`.
 
 Let’s refactor our `OrdersTable` view component to use this new memoized dynamic property.
 
@@ -251,7 +253,7 @@ Let’s refactor our `OrdersTable` view component to use this new memoized dynam
 
 The `Swift-CowBox-Sample` repo contains a detailed performance analysis comparing the performance of memoization against our original implementation: it’s a big performance win. What we care about here now is optimizing the memoization operation *itself*.
 
-Let’s build and run (and launch in Instruments) so we can see how these measurements look (we launch Instruments and select the `os_signposts` instrument). Let’s try the same experiment from `Swift-CowBox-Sample`:
+Let’s build and run so we can see how these measurements look. We launch Instruments and select the `os_signposts` instrument. Let’s try the same experiment from `Swift-CowBox-Sample`:
 
 * Launch App.
 * Navigate to `OrdersTable`.
@@ -308,19 +310,19 @@ Let’s see what happens when we try our experiment again. Here are our results 
 
 Our control group built from value equality spent 692.49 ms on `MainActor` performing work in `SortedOrders.update`. Our test group built from *reference* equality spent 601.41 ms from the same user events. This is about a 13 percent improvement after changing one line of code.
 
+These measurements were from a MacBook Pro M2 Max. Your results could be faster or slower depending on your machine. What matters more for now is the *relative* difference between your control group and your test group. Not the *absolute* values.
+
 ## Analysis
 
 So where did this performance improvement come from? Let’s look a little deeper at what happens when our user selects an `Order` data model and marks it as completed. Our `FoodTruckModel` stores an `Array` of `Order` models. The Swift `Array` is an immutable data structure that adopts value semantics. Because our `Order` models *also* adopt value semantics, mutating one `Order` model mutates our `Array`. This triggers a copy-on-write operation: our `Array` will now create a new buffer reference. This means that `isTriviallyIdentical(to:)` will now return `false` in constant time.
 
 What about the performance of value equality? If our `Array` values matched to the *same* buffer storage reference we could return `true` in constant time. If our `Array` values contained a different number of elements we could return `false` in constant time. Because mutating one `Order` model element means we now have the same number of elements *and* a different buffer storage reference, we must iterate through all `n` elements in linear time.
 
-It’s important to call out on very important decision we took when building our `SortedOrders` dynamic property: the default value of our `sortOrder` sorts `forward` over `creationDate`. This implies that when we mutate the first `Order` in our `Table` we are actually mutating the *last* element in our `Array`.
+It’s important to call out one very important decision we took when building our `SortedOrders` dynamic property: the default value of our `sortOrder` sorts `forward` over `creationDate`. This implies that when we mutate the first `Order` in our `Table` we are actually mutating the *last* element in our `Array`.
 
 You can experiment with this yourself to see how this impacts performance. Try sorting `reverse` over `creationDate` and run the same measurements again. You should see performance look much closer between your test group and control group. Your `SortedOrders.update` method still performs a linear time algorithm to compare all `Order` elements. But since the `Order` element that has been changed is now near the *front* of the `Array` this will return much faster.
 
-Is this “cheating”? Are we “cooking the books”. Well… yes and no. It’s a totally legit critique at this point to argue that our experiment is not something general purpose that scales to a wide variety of applications and products. But… that’s also sort of the whole point.
-
-The `isTriviallyIdentical(to:)` methods are *niche* operations. These are “hipster” APIs: something “underground” that might not really ever cross over to a mainstream audience.
+Is this “cheating”? Are we “cooking the books”. Well… yes and no. It’s a totally legit critique at this point to argue that our experiment is not something general purpose that scales to a wide variety of applications and products. But… that’s also sort of the whole point. The `isTriviallyIdentical(to:)` methods are *niche* operations. These are “hipster” APIs: something “underground” that might not really ever cross over to a mainstream audience.
 
 At the end of the day you are the one who knows the most about the performance of your applications and products. Measure the time spent performing checks for value equality. Make the change to `isTriviallyIdentical(to:)` and measure the time spent performing checks for reference equality. Measure these changes using the real world user experiences in your products. You might end up with a situation where your value equality checks actually *save* you performance down the road. That’s ok. You should continue using value equality checks when it makes sense to do so.
 
